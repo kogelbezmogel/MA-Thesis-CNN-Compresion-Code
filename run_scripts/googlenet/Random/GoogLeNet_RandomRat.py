@@ -4,23 +4,30 @@ import torch as th
 import time
 import pickle
 import sys
+import torchvision as thv
 
-sys.path.append('/net/people/plgrid/plgkogel/mainproject/modules/')
+CONFIG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'modules'))
+sys.path.append( CONFIG_PATH )
+
+import config
 import torchhelper as thh
 import LayerSchemes as ls
 from Random import RandomRat
 
 if __name__ == '__main__':
-    attempts = [ i for i in range(2, 3) ]
-    # goal_flops_ratios = [ 0.92, 0.85, 0.77, 0.69, 0.62, 0.54, 0.46, 0.38 ] # std
-    # goal_flops_ratios = [ 0.83, 0.67, 0.53, 0.41, 0.31, 0.23, 0.17, 0.12 ] # exp
-    goal_flops_ratios = [ 0.12 ] # exp
 
+    if not os.path.isfile(config.GOOGLENET_ORIGIN_MODEL_PATH):
+        model = thv.models.googlenet(weights='IMAGENET1K_V1')
+        th.save(model, config.GOOGLENET_ORIGIN_MODEL_PATH)
+
+    attempts = [ i for i in range(0, 3) ]
+    # goal_flops_ratios = [ 0.92, 0.85, 0.77, 0.69, 0.62, 0.54, 0.46, 0.38 ] # std
+    goal_flops_ratios = [ 0.83, 0.67, 0.53, 0.41, 0.31, 0.23, 0.17, 0.12 ] # exp
 
     print(f'attempts: {attempts}')
     print(f'ratios: {goal_flops_ratios}')
     print('-------------------------------\n')
-    algorithm_folder_path = '/net/people/plgrid/plgkogel/scratch/results/googlenet/RandomRat_exp'
+    algorithm_folder_path = os.path.join(config.BASE_PATH, 'results/googlenet/RandomRat_exp')
 
     train_dataloader = thh.get_train_dataloader()
     test_dataloader = thh.get_test_dataloader()
@@ -38,7 +45,7 @@ if __name__ == '__main__':
 
         for attempt in attempts:
             attempt_start = time.time()
-            model = th.load(f'/net/people/plgrid/plgkogel/scratch/results/googlenet/FineTuned/AN_att{attempt}')
+            model = th.load( os.path.join(config.BASE_PATH, f'models/finetuned/googlenet/AN_att{attempt}') )
             test_acc = thh.evaluate_model(model, test_dataloader)
             print(f"starting test accuracy: {test_acc:7.4f}")
 

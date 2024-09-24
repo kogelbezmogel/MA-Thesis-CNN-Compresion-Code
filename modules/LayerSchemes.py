@@ -170,33 +170,7 @@ def get_hierarchical_groups_alexnet_1h() -> HierarchicalGroups:
     return hierarchical_groups
 
 
-def get_hierarchical_groups_alexnet_2h_v1() -> HierarchicalGroups:
-    hierarchical_groups = HierarchicalGroups("HG | AlexNet | 2 hierarchies | according to sensitivity analysis of Contribution")
-    hierarchical_groups['group1'] = []
-    hierarchical_groups['group2'] = []
-
-    for t_id in [0, 3, 6, 8]:
-        hierarchical_groups['group1'].append(f'features.{t_id}')
-    hierarchical_groups['group2'].append(f'features.10')
-    return hierarchical_groups
-
-
-def get_hierarchical_groups_alexnet_3h_v1() -> HierarchicalGroups:
-    hierarchical_groups = HierarchicalGroups("HG | AlexNet | 3 hierarchies | according to sensitivity analysis MeanGradient")
-    hierarchical_groups['group1'] = []
-    hierarchical_groups['group2'] = []
-    hierarchical_groups['group3'] = []
-
-    for t_id in [0]:
-        hierarchical_groups['group1'].append(f'features.{t_id}')
-    for t_id in [3, 6, 8]:
-        hierarchical_groups['group2'].append(f'features.{t_id}')
-    for t_id in [10]:
-        hierarchical_groups['group3'].append(f'features.{t_id}')
-    return hierarchical_groups
-
-
-def get_hierarchical_groups_alexnet_2h_v2_contr() -> HierarchicalGroups:
+def get_hierarchical_groups_alexnet_2h_contr() -> HierarchicalGroups:
     hierarchical_groups = HierarchicalGroups("HG | AlexNet | 2 hierarchies | according to sensitivity analysis of Contribution")
     hierarchical_groups['group1'] = []
     hierarchical_groups['group2'] = []
@@ -208,18 +182,7 @@ def get_hierarchical_groups_alexnet_2h_v2_contr() -> HierarchicalGroups:
     return hierarchical_groups
 
 
-def get_hierarchical_groups_alexnet_2h_v2_mean() -> HierarchicalGroups:
-    hierarchical_groups = HierarchicalGroups("HG | AlexNet | 2 hierarchies | according to sensitivity analysis of MeanGradient")
-    hierarchical_groups['group1'] = []
-    hierarchical_groups['group2'] = []
-
-    for t_id in [0, 3, 6]:
-        hierarchical_groups['group1'].append(f'features.{t_id}')
-    for t_id in [8, 10]:
-        hierarchical_groups['group2'].append(f'features.{t_id}')
-    return hierarchical_groups
-
-def get_hierarchical_groups_alexnet_2h_v3_mean() -> HierarchicalGroups:
+def get_hierarchical_groups_alexnet_2h_mean() -> HierarchicalGroups:
     hierarchical_groups = HierarchicalGroups("HG | AlexNet | 2 hierarchies | according to sensitivity analysis of MeanGradient")
     hierarchical_groups['group1'] = []
     hierarchical_groups['group2'] = []
@@ -230,19 +193,6 @@ def get_hierarchical_groups_alexnet_2h_v3_mean() -> HierarchicalGroups:
         hierarchical_groups['group2'].append(f'features.{t_id}')
     return hierarchical_groups
 
-def get_hierarchical_groups_alexnet_3h_v2_mean() -> HierarchicalGroups:
-    hierarchical_groups = HierarchicalGroups("HG | AlexNet | 2 hierarchies | according to sensitivity analysis of MeanGradient")
-    hierarchical_groups['group1'] = []
-    hierarchical_groups['group2'] = []
-    hierarchical_groups['group3'] = []
-
-    for t_id in [0, 3]:
-        hierarchical_groups['group1'].append(f'features.{t_id}')
-    for t_id in [6]:
-        hierarchical_groups['group1'].append(f'features.{t_id}')
-    for t_id in [8, 10]:
-        hierarchical_groups['group3'].append(f'features.{t_id}')
-    return hierarchical_groups
 
 
 ################################################################## VGG #################################################
@@ -316,7 +266,7 @@ def get_hierarchical_groups_vgg_4h_contr() -> HierarchicalGroups:
     return hierarchical_groups
     
     
-def get_hierarchical_groups_vgg_4h_meang() -> HierarchicalGroups:
+def get_hierarchical_groups_vgg_4h_mean() -> HierarchicalGroups:
     hierarchical_groups = HierarchicalGroups("HG | VGG16 | global pruning | according to MeanGrad sens")
     hierarchical_groups['group1'] = []
     hierarchical_groups['group2'] = []
@@ -334,7 +284,7 @@ def get_hierarchical_groups_vgg_4h_meang() -> HierarchicalGroups:
     return hierarchical_groups
 
 
-def get_hierarchical_groups_vgg_3h_meang_2at() -> HierarchicalGroups:
+def get_hierarchical_groups_vgg_3h() -> HierarchicalGroups:
     hierarchical_groups = HierarchicalGroups("HG | VGG16 | 3h")
     hierarchical_groups['group1'] = []
     hierarchical_groups['group2'] = []

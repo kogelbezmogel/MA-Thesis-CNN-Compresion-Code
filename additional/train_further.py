@@ -1,17 +1,20 @@
 import pickle
 import torch as th
 import sys
+import os
 
-sys.path.append('/net/people/plgrid/plgkogel/mainproject/modules/')
+CONFIG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'modules'))
+sys.path.append( CONFIG_PATH )
+
+import config
 import torchhelper as thh
-import LayerSchemes as ls
 import os
 
 epochs = 10
 train_dataloader = thh.get_train_dataloader()
 test_dataloader = thh.get_test_dataloader()
 
-main_path = '/net/tscratch/people/plgkogel/results/resnet/IndirectDirect_wo_steps/'
+main_path = os.path.join(config.BASE_PATH, 'results/resnet/IndirectDirect_wo_steps/')
 
 # ratios = [17, 33, 47, 59, 69, 77, 83, 88] # googlenet
 ratios = [13, 25, 36, 46, 55, 64, 71, 78] # resnet

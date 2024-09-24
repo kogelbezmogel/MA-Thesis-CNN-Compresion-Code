@@ -5,13 +5,22 @@ import time
 import pickle
 import sys
 import calflops
+import torchvision as thv
 
-sys.path.append('/net/people/plgrid/plgkogel/mainproject/modules/')
+CONFIG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'modules'))
+sys.path.append( CONFIG_PATH )
+
+import config
 import torchhelper as thh
 import LayerSchemes as ls
 from IndirectDirect import IndirectDirect
 
 if __name__ == '__main__':
+
+    if not os.path.isfile(config.RESNET50_ORIGIN_MODEL_PATH):
+        model = thv.models.resnet50(weights='IMAGENET1K_V1')
+        th.save(model, config.RESNET50_ORIGIN_MODEL_PATH)
+        
     # creting dataloaders
     train_dataloader = thh.get_train_dataloader()
     test_dataloader = thh.get_test_dataloader()
@@ -20,11 +29,11 @@ if __name__ == '__main__':
     layer_pairs = ls.get_layer_pairs_resnet50_classic()
 
     attempts = [ i for i in range(0, 3) ]
-    ratios = [ round(val/10, 1) for val in range(6, 9) ]
-    retrain_epochs = 0 # in normal use should be 3
-    last_retrain_epochs = 10 # in normal use shold be 10
+    ratios = [ round(val/10, 1) for val in range(1, 9) ]
+    retrain_epochs = 0
+    last_retrain_epochs = 10
     max_reduction = 1.0
-    algorithm_folder_path = '/net/people/plgrid/plgkogel/scratch/results/resnet/IndirectDirect_wo_steps'
+    algorithm_folder_path = os.path.join(config.BASE_PATH, 'results/resnet/IndirectDirect_wo_steps')
     print(f'attempts: {attempts}')
     print(f'ratios: {ratios}')
     print(f"max_reduction_in_step: {max_reduction}")
@@ -33,7 +42,6 @@ if __name__ == '__main__':
     print(f"layers: {layer_pairs}")
     print(f"main folder: {algorithm_folder_path}")    
     print('-------------------------------\n')
-    assert len(attempts) <= 5    
 
     if not os.path.isdir(algorithm_folder_path):
         os.mkdir(algorithm_folder_path)
@@ -42,7 +50,7 @@ if __name__ == '__main__':
         general_flops_ratio = None
         for attempt in attempts:
             attempt_start = time.time()
-            model = th.load(f'/net/people/plgrid/plgkogel/scratch/results/resnet/FineTuned/AN_att{attempt}')
+            model = th.load( os.path.join(config.BASE_PATH, f'models/finetuned/resnet/AN_att{attempt}') )
             test_acc = thh.evaluate_model(model, test_dataloader)
             print(f"starting test accuracy: {test_acc:7.4f}")
 
