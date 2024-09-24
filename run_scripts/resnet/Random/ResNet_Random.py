@@ -4,21 +4,30 @@ import torch as th
 import time
 import pickle
 import sys
+import torchvision as thv
 
-sys.path.append('/net/people/plgrid/plgkogel/mainproject/modules/')
+CONFIG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'modules'))
+sys.path.append( CONFIG_PATH )
+
+import config
 import torchhelper as thh
 import LayerSchemes as ls
 from Random import Random
 
 
 if __name__ == '__main__':
+
+    if not os.path.isfile(config.RESNET50_ORIGIN_MODEL_PATH):
+        model = thv.models.resnet50(weights='IMAGENET1K_V1')
+        th.save(model, config.RESNET50_ORIGIN_MODEL_PATH)
+
     attempts = [ i for i in range(0, 3) ]
     goal_flops_ratios = [0.87, 0.75, 0.64, 0.54, 0.45, 0.36, 0.29, 0.22]
     print(f'attempts: {attempts}')
     print(f'ratios: {goal_flops_ratios}')
     print('-------------------------------\n')
 
-    algorithm_folder_path = '/net/people/plgrid/plgkogel/scratch/results/resnet/Random'
+    algorithm_folder_path = os.path.join(config.BASE_PATH, 'results/resnet/Random')
 
     train_dataloader = thh.get_train_dataloader()
     test_dataloader = thh.get_test_dataloader()
@@ -36,7 +45,7 @@ if __name__ == '__main__':
 
         for attempt in attempts:
             attempt_start = time.time()
-            model = th.load(f'/net/people/plgrid/plgkogel/scratch/results/resnet/FineTuned/AN_att{attempt}')
+            model = th.load(os.path.join(config.BASE_PATH, f'models/finetuned/resnet/AN_att{attempt}') )
             test_acc = thh.evaluate_model(model, test_dataloader)
             print(f"starting test accuracy: {test_acc:7.4f}")
 

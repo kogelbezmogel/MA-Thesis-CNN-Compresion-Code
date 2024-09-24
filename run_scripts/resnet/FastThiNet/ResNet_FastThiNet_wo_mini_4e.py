@@ -4,56 +4,51 @@ import calflops
 import time
 import pickle
 import sys
+import torchvision as thv
 
-sys.path.append('/net/people/plgrid/plgkogel/mainproject/modules/')
+CONFIG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'modules'))
+sys.path.append( CONFIG_PATH )
+
+import config
 import torchhelper as thh
 from FastThiNet import FastThiNet
 import LayerSchemes as ls
 
 if __name__ == '__main__':
 
+    if not os.path.isfile(config.RESNET50_ORIGIN_MODEL_PATH):
+        model = thv.models.resnet50(weights='IMAGENET1K_V1')
+        th.save(model, config.RESNET50_ORIGIN_MODEL_PATH)
+
     # creating dataloaders
     train_dataloader = thh.get_train_dataloader()
     test_dataloader = thh.get_test_dataloader()
 
     samples_per_class = 10
-    images_samples_path = f'/net/people/plgrid/plgkogel/scratch/datasets/thinetsamples/cifar10_{samples_per_class}'
+    images_samples_path = os.path.join(config.BASE_PATH, f'data/thinetsamples/cifar10_{samples_per_class}')
     if not os.path.isdir(images_samples_path):
        os.mkdir(images_samples_path)
        thh.choose_dataset_representatives(samples_per_class, train_dataloader, images_samples_path)
 
-
     # layers to prune
     layer_pairs = ls.get_layer_pairs_resnet50_classic()
 
-    # definig additional mask for layers
-    additional_ratios = dict()
-    for pair in layer_pairs:
-        t_layer_name = pair['target_layer']
-        additional_ratios[t_layer_name] = 1.0
-    # additional_ratios['features.0'] = 0.7 # from sesnivity analysis
-
-
-    attempts = [ i for i in range(1, 2) ]
-    ratios = [ round(val/10, 1) for val in range(5, 9) ]
-    retrain_epochs = 4 # in normal use should be 2
-    last_retrain_epochs = 10 # in normal use shold be 15
+    attempts = [ i for i in range(0, 3) ]
+    ratios = [ round(val/10, 1) for val in range(1, 9) ]
+    retrain_epochs = 4
+    last_retrain_epochs = 10
     minimize_err = False
-    minimize_mode = 'none'
     locations_per_image = 10
-    algorithm_folder_path = '/net/people/plgrid/plgkogel/scratch/results/resnet/FastThiNet_wo_mini_4e'
+    algorithm_folder_path = os.path.join(config.BASE_PATH, 'results/resnet/FastThiNet_wo_mini_4e')
     print(f'attempts: {attempts}')
     print(f'ratios: {ratios}')
     print(f"retrain epochs: {retrain_epochs}")
     print(f"last retrain epochs: {last_retrain_epochs}")
     print(f"minimize_err: {minimize_err}")
-    print(f"minimize_mode: {minimize_mode}")
     print(f"samples per class: {samples_per_class}")
     print(f"locations per image: {locations_per_image}")
     print(f"main folder: {algorithm_folder_path}")
-    print(f"additional ratios: {additional_ratios}")
     print('------------------------------------------------------\n')
-
 
     if not os.path.isdir(algorithm_folder_path):
         os.mkdir(algorithm_folder_path)
@@ -63,7 +58,7 @@ if __name__ == '__main__':
         general_flops_ratio = None
         for attempt in attempts:
             attempt_start = time.time()
-            model = th.load(f'/net/people/plgrid/plgkogel/scratch/results/resnet/FineTuned/AN_att{attempt}')
+            model = th.load( os.path.join(config.BASE_PATH, f'models/finetuned/resnet/AN_att{attempt}') )
             test_acc = thh.evaluate_model(model, test_dataloader)
             print(f"starting test accuracy: {test_acc:7.4f}")
 
@@ -79,9 +74,7 @@ if __name__ == '__main__':
                 images_samples_path,
                 locations_per_image = locations_per_image,
                 minimize_err = minimize_err,
-                minimize_mode = minimize_mode,
-                retrain_epochs = retrain_epochs,
-                additional_ratios_mask = additional_ratios
+                retrain_epochs = retrain_epochs
             )
             alg.prune_model()
 
