@@ -60,8 +60,7 @@ class ThiNet():
             locations_per_image: int,
             minimize_err: bool,
             retrain_epochs: int,
-            additional_ratios_mask = None,
-            minimize_mode = 'colective'
+            additional_ratios_mask = None
             ) -> None:
         
         self.layer_pairs = copy.deepcopy(layer_pairs)
@@ -69,7 +68,6 @@ class ThiNet():
         self.images_samples_path = images_samples_path
         self.ratio = ratio
         self.minimize_err = minimize_err
-        self.minimize_mode = minimize_mode
         self.retrain_epochs = retrain_epochs
         self.train_dataloader = train_dataloder
         self.test_dataloader = test_dataloder
@@ -89,7 +87,8 @@ class ThiNet():
         if additional_ratios_mask != None:
             self.additional_ratios_mask = additional_ratios_mask
         else:
-            for t_layer_name, _, _ in self.layer_pairs:
+            for pair in self.layer_pairs:
+                t_layer_name = pair['target_layer']
                 self.additional_ratios_mask[t_layer_name] = 1.0
 
         self.model = model.to(self.device)
@@ -427,91 +426,8 @@ class ThiNet():
             thh.remove_kernel(self.model, pair, kernel_id)
             ls.update_layer_pairs_after_removal(self.layer_pairs, pair_pruned=pair)
 
-
-    def prune_and_minimize_error_individual(self, T: list[int], pair: dict[str, list, list, list]):
-        """ This function can be used after pruning each layer to further minimize occured error.
-        To achieve this functions is using the ordinary least squares approach to find scaling factor for channels from kernels
-        It is clearer descripted in paper in equation (7). As a additional result function also prunes the target layer
-
-        Arguments
-        ---------
-        T: list[int]
-            kernels choosen to be pruned from target layer
-        target_layer_name: str
-            layer from which kernels will be remove
-        following_layer_name: str
-            layer_succeding target layer. It will have channels remove to match new shape of signal
-        batchn_layer_name
-            batch normalization layer lying after target layer befor following layer.
-            If None that means there is none there
-        """
-        target_layer_name = pair['target_layer']
-        following_layer_name = pair['follow_layers'][0]
-        
-        self.model = self.model.to(self.device)
-        target_layer = self.model.get_submodule(target_layer_name)
-        following_layer = self.model.get_submodule(following_layer_name)
-
-        # gathering y_i from unprunde layer
-        follow_layer_modified_copy = copy.deepcopy(following_layer)
-        follow_layer_modified_copy.stride = (1, 1)
-        follow_layer_modified_copy.padding = (0, 0)
-        follow_layer_modified_copy.bias = None
-        y_ref_unpruned = follow_layer_modified_copy(self.samples.to(self.device))
-
-        # pruning layer
-        self.prune_target_layer(T, pair)
-        # pruning coresponding channels from samples
-        T.sort(reverse=True)
-        # this will be used to restore samples after algorithm finishes
-        deleted_samples_columns = []
-        for channel_id in T:
-            deleted_samples_columns.insert( 0, (channel_id, self.samples[:, channel_id:channel_id+1, :, :]) )
-            self.samples = th.cat( [self.samples[:, :channel_id, :, :], self.samples[:, channel_id+1:, : ,:]], dim=1 )
-
-        kernels_left = target_layer.weight.shape[0]
-
-        with th.no_grad():
-            for kernel_id in range(following_layer.weight.shape[0]):
-                # the goal for one kernel from following_layer is to aproximate one coresponding channel from the output
-                # that is way y_ref is a slice of y_ref_unpruned
-                y_ref = y_ref_unpruned[:, kernel_id, :, :]
-                y_ref = th.reshape(y_ref, [-1, 1]).double()
-                kernel = following_layer.weight[kernel_id].detach().clone()
-
-                # with this shape it will be possible to just use conv2d with groups
-                # by treating each kernel channel as separate kernel 1x3x3. [c, 3, 3] => [c, 1, 3, 3]
-                weights = kernel[:, None, :, :]
-                X = th.conv2d(self.samples.to(self.device), weights, padding=(0, 0), groups=weights.shape[0]).detach()
-                # moving channel dimension to the end of a tensor to reshape it correctly later
-                X = th.movedim(X, 1, -1)
-                # usage of double is dictated by enormous values in inverted matrix.
-                # the bigger is the disproportion between target_layer in_channels and follow_layer in_channels the bigger are the values.
-                X = th.reshape(X, [-1, kernels_left]).double()
-                X_t = th.transpose(X, dim0=0, dim1=1)
-                XX = th.linalg.matmul(X_t, X)
-
-                if th.linalg.det(XX) == 0:
-                    X = X + th.randn(X.shape, dtype=th.float64).to(self.device) * 1e-7 # adding noise of magnitude 1e-9
-                    X_t = th.transpose(X, dim0=0, dim1=1)
-                    XX = th.linalg.matmul(X_t, X)
-                
-                w = th.linalg.matmul(
-                                    th.linalg.inv(XX),
-                                    th.linalg.matmul(X_t, y_ref)
-                                )
-
-                for j in range(len(w)):
-                    following_layer.weight[kernel_id, j, :, :] = w[j] * following_layer.weight[kernel_id, j, :, :]
-            # restoring the samples tensor
-            for (channel_id, d_columns) in deleted_samples_columns:
-                self.samples = th.cat( [self.samples[:, :channel_id, :, :], d_columns, self.samples[:, channel_id:, : ,:]], dim=1 )
-            deleted_samples_columns.clear()
-        self.model = self.model.cpu()
-
-
     
-    def prune_and_minimize_error_colective(self, T: list[int], pair: dict[str, list, list, list]):
+    def prune_and_minimize_error(self, T: list[int], pair: dict[str, list, list, list]):
         """ This function can be used after pruning each layer to further minimize occured error.
         To achieve this functions is using the ordinary least squares approach to find scaling factor for channels from kernels
         It is clearer descripted in paper in equation (7). As a additional result function also prunes the target layer
@@ -677,7 +593,7 @@ class ThiNet():
                 T, I = self.find_subset_T(pair, number=kernel_portion_size)
                 # pruning found subset and minimizing error
                 if self.minimize_err:
-                    self.prune_and_minimize_error_colective(T, pair)
+                    self.prune_and_minimize_error(T, pair)
                 else:
                     self.prune_target_layer(T, pair)
                 # retraining model
@@ -709,9 +625,6 @@ class ThiNet():
         for pair in self.layer_pairs:
 
             start_all = time.time()
-            # t_layer_name = pair['target_layer']
-            # f_layers_names = pair['follow_layers']
-            # optional_layers = pair['optional']
 
             print( f"layer ( {pair['target_layer']} ) pruning starts ----------")
 
@@ -729,47 +642,9 @@ class ThiNet():
 
             # pruning and minimizing error
             if self.minimize_err:
-                if self.minimize_mode=='colective':
-                    self.prune_and_minimize_error_colective(T, pair)
-                elif self.minimize_mode=='individual':
-                    raise Exception(f"minimize mode individual is not supproted")    
-                    # self.prune_and_minimize_error_individual(T, pair)
-                else:
-                    raise Exception(f"minimize mode {self.minimize_mode} doesn't match")
+                self.prune_and_minimize_error(T, pair)
             else:
                 self.prune_target_layer(T, pair)
-            
-            # thh.reset_bn_stats(self.model)
-            # # stats check
-            # handlers = []
-            # def get_input_to_layer_hook(name: str):
-            #         def hook(model, input, output):
-            #             print(f"{name} max: {input[0].max()}")
-            #         return hook
-            # all_layers = []
-            # for denseblock_id in range(4, 5):
-            #     denselayers_num = len( self.model.get_submodule(f"features.denseblock{denseblock_id}") )
-            #     for denselayer_id in range(5, denselayers_num): # without last conv section 
-            #         # adding first conv layer to list
-            #         all_layers += [
-            #             f'features.denseblock{denseblock_id}.denselayer{denselayer_id}.norm1',
-            #             f'features.denseblock{denseblock_id}.denselayer{denselayer_id}.conv1',
-            #             f'features.denseblock{denseblock_id}.denselayer{denselayer_id}.norm2',
-            #             f'features.denseblock{denseblock_id}.denselayer{denselayer_id}.conv2'
-            #         ]
-            #     all_layers += [ f'features.norm5' ]
-            #     all_layers += [ f'transition4' ]
-
-            # for layer_name in all_layers:
-            #     handler = self.model.get_submodule(layer_name).register_forward_hook( get_input_to_layer_hook(layer_name) )
-            #     handlers.append(handler)
-            # for x, y in self.train_dataloader:
-            #     self.model, x = self.model.to(self.device), x.to(self.device)
-            #     self.model(x)
-            #     break
-            # for handler in handlers:
-            #     handler.remove()
-            
 
             # retraining model
             self.model.apply( thh.set_bn_train )

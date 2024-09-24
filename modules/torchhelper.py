@@ -217,15 +217,6 @@ def remove_kernel(model: th.nn.Module, pair: dict[str, list, list, list],  kerne
     channels_slice = [ pair['coresponding_channels_slice']['start'], pair['coresponding_channels_slice']['end'] ]
     target_layer = model.get_submodule(target_layer_name)
 
-    # print("before pruning")
-    # print(f"target {target_layer_name} -> {target_layer.weight.shape}")
-    # for follow in following_layers_names:
-    #    print(f"target {follow} -> {model.get_submodule(follow).weight.shape}")
-    # for opt in following_layers_names:
-    #    print(f"target {opt} -> {model.get_submodule(opt).weight.shape}")
-
-    # print(f"removing :{target_layer_name} -> {following_layers_names} | {optional} | {model.get_submodule(target_layer_name).weight.shape} | {model.get_submodule(following_layers_names[0]).weight.shape}")
-
     with th.no_grad():
         # altering channels in the next layers
         for following_layer_name in following_layers_names:
@@ -606,12 +597,7 @@ class GoogLeNetTAT(thv.models.GoogLeNet):
         x = self.inception5a(x)
         x = self.inception5b(x)
 
-        try:
-            x = self.fc(x)
-        except Exception as e:
-            print(f"!!!!!!!!!!!!!!!!! x:  {x.shape}")
-            print(f"!!!!!!!!!!!!!!!!!fc: {self.get_submodule('fc.0').weight.shape}")
-            raise Exception(e.__str__())
+        x = self.fc(x)
         return x, aux2, aux1
 
 

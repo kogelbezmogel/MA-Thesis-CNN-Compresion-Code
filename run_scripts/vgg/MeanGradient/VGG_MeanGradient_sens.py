@@ -3,14 +3,23 @@ import torch as th
 
 import pickle
 import sys
+import torchvision as thv
 
-sys.path.append('/net/people/plgrid/plgkogel/mainproject/modules/')
+CONFIG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'modules'))
+sys.path.append( CONFIG_PATH )
+
+import config
 import torchhelper as thh
 import LayerSchemes as ls
 from MeanGradient import MeanGradient
 
 
 if __name__ == '__main__':
+
+    if not os.path.isfile(config.VGG16_ORIGIN_MODEL_PATH):
+        model = thv.models.vgg16(weights='IMAGENET1K_V1')
+        th.save(model, config.VGG16_ORIGIN_MODEL_PATH)
+
     # creatgin dataloaders
     train_dataloader = thh.get_train_dataloader()
     test_dataloader = thh.get_test_dataloader()
@@ -20,11 +29,11 @@ if __name__ == '__main__':
     # creating hierarchical groups based on sensitivity analysis
     hierarchical_groups = ls.get_hierarchical_groups_vgg_1h()
 
-    algorithm_folder_path = '/net/people/plgrid/plgkogel/scratch/results/vgg/MeanGradient_sens'
+    algorithm_folder_path = os.path.join(config.BASE_PATH, 'results/vgg/MeanGradient_sens')
     static_group = []
 
-    attempts = [ i for i in range(2, 5) ]
-    retrain_epochs = 0 # in normal use should be 5 for prune and 3 for sensitivity analysis
+    attempts = [ i for i in range(0, 3) ]
+    retrain_epochs = 0
     n = 256
     print(f'attempts: {attempts}')
     print(f"retrain epochs: {retrain_epochs}")
@@ -39,7 +48,7 @@ if __name__ == '__main__':
         os.mkdir(algorithm_folder_path)
 
     for attempt in attempts:
-        model = th.load(f'/net/people/plgrid/plgkogel/scratch/results/vgg/FineTuned/AN_att{attempt}')
+        model = th.load(os.path.join(config.BASE_PATH, f'models/finetuned/vgg/AN_att{attempt}'))
 
         alg = MeanGradient(
             0.1,

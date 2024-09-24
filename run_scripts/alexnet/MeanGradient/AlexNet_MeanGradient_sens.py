@@ -3,14 +3,23 @@ import torch as th
 
 import pickle
 import sys
+import torchvision as thv
 
-sys.path.append('/net/people/plgrid/plgkogel/mainproject/modules/')
+CONFIG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'modules'))
+sys.path.append( CONFIG_PATH )
+
+import config
 import torchhelper as thh
 import LayerSchemes as ls
 from MeanGradient import MeanGradient
 
 
 if __name__ == '__main__':
+
+    if not os.path.isfile(config.ALEXNET_ORIGIN_MODEL_PATH):
+        model = thv.models.alexnet(weights='IMAGENET1K_V1')
+        th.save(model, config.ALEXNET_ORIGIN_MODEL_PATH)
+
     # creatgin dataloaders
     train_dataloader = thh.get_train_dataloader()
     test_dataloader = thh.get_test_dataloader_from_train_data()
@@ -20,11 +29,11 @@ if __name__ == '__main__':
     # creating hierarchical groups based on sensitivity analysis
     hierarchical_groups = ls.get_hierarchical_groups_alexnet_1h()
 
-    algorithm_folder_path = '/net/people/plgrid/plgkogel/scratch/results/alexnet/MeanGradient_sens1'
+    algorithm_folder_path = os.path.join(config.BASE_PATH, 'results/alexnet/MeanGradient_sens')
 
-    attempts = [ i for i in range(0, 5) ]
-    retrain_epochs = 0 # in normal use should be 5 for prune and 3 for sensitivity analysis
-    # last_retrain_epochs = 1 # in normal use shold be 10
+    attempts = [ i for i in range(0, 3) ]
+    retrain_epochs = 0
+    last_retrain_epochs = 10
     n = 256
     print(f'attempts: {attempts}')
     print(f"retrain epochs: {retrain_epochs}")
@@ -39,7 +48,7 @@ if __name__ == '__main__':
         os.mkdir(algorithm_folder_path)
 
     for attempt in attempts:
-        model = th.load(f'/net/people/plgrid/plgkogel/scratch/results/alexnet/FineTuned/AN_att{attempt}')
+        model = th.load( os.path.join(config.BASE_PATH, f'models/finetuned/alexnet/AN_att{attempt}') )
         test_acc = thh.evaluate_model(model, test_dataloader)
         print(f"starting test accuracy: {test_acc:7.4f}")
 
